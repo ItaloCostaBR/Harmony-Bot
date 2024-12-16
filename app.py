@@ -63,6 +63,9 @@ def update_scale():
     except Exception as e:
         return f"Erro ao atualizar a escala: {e}"
 
+bot.send_message(CHAT_ID, "🎵 Graça e Paz! HarmonyBot agradecendo a oportunidade! 🎵 "
+                          "\n\n ⌨️ Digite /start ou /help e partiu.")
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, "🎵 Graça e Paz! Eu sou o HarmonyBot! 🎵 "
