@@ -5,7 +5,9 @@ import gspread
 import telebot
 from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
-from utils.formats import format_scale, format_message_scale
+
+from utils.formats import format_scale, format_message_scale, update_rotation_scale
+from utils.validates import is_past_date, next_sunday
 
 load_dotenv()
 
@@ -42,6 +44,25 @@ def get_all_content_sheet(idx_tab = 0):
     except Exception as e:
         return f"Erro ao acessar a planilha: {e}"
 
+def update_scale():
+    try:
+        data_sheet = client.open(SPREADSHEET_NAME).get_worksheet(2)
+        sheet = get_all_content_sheet(2)
+        rotation = update_rotation_scale(sheet)
+
+        for data in rotation:
+            data['DATA ESCALA'] = ''
+
+        rotation[0]['DATA ESCALA'] = next_sunday().strftime("%d/%m/%Y")
+        data_updated = [[data['ORDEM'], data['FUNÇÃO'], data['DATA ESCALA']] for data in rotation]
+
+        data_sheet.update(values=data_updated, range_name="A2:C6")
+
+        return True
+
+    except Exception as e:
+        return f"Erro ao atualizar a escala: {e}"
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, "🎵 Graça e Paz! Eu sou o HarmonyBot! 🎵 "
@@ -58,28 +79,40 @@ def send_welcome(message):
 @bot.message_handler(commands=['escala'])
 def scale(message):
     sheet = format_scale(get_all_content_sheet(2))
+    date_scale = sheet['date_scale']
+
+    if is_past_date(date_scale):
+        if update_scale():
+            sheet = format_scale(get_all_content_sheet(2))
+
     bot.reply_to(message, "🎵 Aqui está a ESCALA! 🎵 "
                           f"\n\n {format_message_scale(sheet)}")
+
+@bot.message_handler(commands=['repertorio'])
+def scale(message):
+    bot.reply_to(message, "🎵 Aqui está a PLAYLIST! 🎵 "
+                          f"\n\n 🎶 https://www.youtube.com/watch?v=S1ziUJSxk2w&list=PLOMUauEK3yzW9gwXRBeyaP6omXz1eCLGz")
 
 # Tratamento de mensagens com datas
 @bot.message_handler(func=lambda message: True)
 def consultar_data(message):
     try:
-        # Valida e formata a data
-        data_input = message.text.strip()
-        data_formatada = datetime.strptime(data_input, "%d/%m/%Y").strftime("%d/%m/%Y")
-
-        # Busca na planilha
-        resultado = get_all_columns_data_sheet(data_formatada)
-        if resultado:
-            resposta = f"Informações para {data_formatada}:\n"
-            for chave, valor in resultado.items():
-                resposta += f"- {chave}: {valor}\n"
-            bot.reply_to(message, resposta)
-        else:
-            bot.reply_to(message, f"Não há registros para a data {data_formatada}.")
-    except ValueError:
-        bot.reply_to(message, "Por favor, envie uma data válida no formato DD/MM/AAAA.")
+        # # Valida e formata a data
+        # data_input = message.text.strip()
+        # data_formatada = datetime.strptime(data_input, "%d/%m/%Y").strftime("%d/%m/%Y")
+        #
+        # # Busca na planilha
+        # resultado = get_all_columns_data_sheet(data_formatada)
+        # if resultado:
+        #     resposta = f"Informações para {data_formatada}:\n"
+        #     for chave, valor in resultado.items():
+        #         resposta += f"- {chave}: {valor}\n"
+        #     bot.reply_to(message, resposta)
+        # else:
+        #     bot.reply_to(message, f"Não há registros para a data {data_formatada}.")
+        send_welcome(message)
+    # except ValueError:
+    #     bot.reply_to(message, "Por favor, envie uma data válida no formato DD/MM/AAAA.")
     except Exception as e:
         bot.reply_to(message, f"Ocorreu um erro: {e}")
 

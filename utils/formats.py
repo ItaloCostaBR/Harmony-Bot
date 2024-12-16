@@ -19,4 +19,25 @@ def format_message_scale(obj):
         for i, item in enumerate(obj['scale'])
     )
 
-    return f"{obj['date_scale']}\n{list_scale}"
+    return f"{obj['date_scale']} \n{list_scale}"
+
+def update_rotation_scale(data_records):
+    data_records.insert(0, data_records.pop())
+
+    for i, data in enumerate(data_records):
+        if i == 0:
+            # data['FUNÇÃO'] = 'abertura'
+            continue
+        elif i == 1 or i == 2:
+            data['FUNÇÃO'] = 'congregacional'
+        elif i == 3:
+            data['FUNÇÃO'] = 'harpa'
+        elif i == 4:
+            data['FUNÇÃO'] = 'oferta'
+
+        if data['ORDEM'].strip() == 'Letícia':
+            data['FUNÇÃO'] = 'abertura'
+            if i == 3:
+                data['FUNÇÃO'] += ' e harpa'
+
+    return data_records
