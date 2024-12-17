@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
 from telebot.types import Message
 
-from utils.formats import format_scale, format_message_scale, update_rotation_scale, format_events
+from utils.formats import format_scale, format_message_scale, update_rotation_scale, format_events, \
+    format_first_register
 from utils.validates import is_past_date, next_sunday
 
 load_dotenv()
@@ -24,14 +25,17 @@ scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/au
 credentials = ServiceAccountCredentials.from_json_keyfile_name(SHEET_CREDENTIALS_FILE, scope)
 client = gspread.authorize(credentials)
 
-message_default = ("\n\nSeu assistente pessoal para te ajudar com as escalas, eventos e repertórios de forma simples e eficiente!"
-                   "\n✨ Como posso lhe ajudar?"
-                   "\n\n ⌨️ Digite ou 👆 clique no comando que deseja.\n"
-                   "\n/start ou /help para visualizar os comandos."
-                   "\n/escala para visualizar a escala do domingo."
-                   "\n/eventos para visualizar os eventos especiais do mês."
-                   "\n/repertorio para acessar a playlist de domingo."
-                   "\n\nEstou sempre afinado e pronto para ajudar! 🎸")
+message_commands = ("\n\nSeu assistente pessoal para te ajudar com as escalas, eventos e repertórios de forma simples e eficiente!"
+                    "\n✨ Como posso lhe ajudar?"
+                    "\n\n ⌨️ Digite ou 👆 clique no comando que deseja.\n"
+                    "\n/start ou /help para visualizar os comandos."
+                    "\n/escala para visualizar a escala do domingo."
+                    "\n/eventos para visualizar os eventos especiais do mês."
+                    "\n/repertorio para acessar a playlist de domingo."
+                    "\n/minhamatricula para listar sua matrícula."
+                    "\n/criarmeubancoderepertorio para criar sua lista de músicas/tons."
+                    "\n/addrepertorio para adicionar um hino ao seu repertório."
+                    "\n\nEstou sempre afinado e pronto para ajudar! 🎸")
 title_topics = {
     3: "MULTITRACKS 🎶",
     4: "MP3 🎶",
@@ -71,7 +75,7 @@ def update_scale():
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(message, "🎵 Graça e Paz! Eu sou o HarmonyBot! 🎵 "+message_default)
+    bot.reply_to(message, "🎵 Graça e Paz! Eu sou o HarmonyBot! 🎵 "+message_commands)
 
 @bot.message_handler(commands=['escala'])
 def scale(message):
@@ -86,15 +90,55 @@ def scale(message):
                           f"\n\n {format_message_scale(sheet)}")
 
 @bot.message_handler(commands=['eventos'])
-def scale(message):
+def events(message):
     sheet = get_all_content_sheet(1)
     bot.reply_to(message, "🎵 Aqui estão os EVENTOS importantes! 🎵 "
                           f"\n\n {format_events(sheet)}")
 
 @bot.message_handler(commands=['repertorio'])
-def scale(message):
+def repertory(message):
     bot.reply_to(message, "🎵 Aqui está a PLAYLIST! 🎵 "
                           f"\n\n 🎶 https://www.youtube.com/watch?v=S1ziUJSxk2w&list=PLOMUauEK3yzW9gwXRBeyaP6omXz1eCLGz")
+
+@bot.message_handler(commands=['minhamatricula'])
+def my_id(message):
+    user_id = message.from_user.id
+    name = message.from_user.first_name
+
+    bot.reply_to(message, f"🔥 A paz do Senhor, *{name}*! 🔥"
+                          f"\n\n 🔑 Matrícula: {user_id}")
+
+@bot.message_handler(commands=['criarmeubancoderepertorio'])
+def register(message):
+    user_id = message.from_user.id
+    register_tab = create_tab_user(user_id)
+
+    if register_tab:
+        response = ("*“Assim já não sois estrangeiros, nem forasteiros, mas concidadãos dos santos e da família de Deus.”* (Efésios 2:19)"
+                    "\n\n*Você foi registrado com sucesso!* 🎉 Que sua vida seja um instrumento de honra e louvor na obra do Senhor.")
+    else:
+        response = ("⚠️ *Atenção, servo(a) de Deus!* ⚠️"
+                    "\n\n*Você já está registrado* no *Livro da Vida*.")
+
+    bot.reply_to(message, response)
+
+@bot.message_handler(commands=['addrepertorio'])
+def add_repertory(message):
+    user_id = message.from_user.id
+    name = message.from_user.first_name
+    not_register = check_is_not_register(user_id)
+
+    if not_register:
+        response = ("⚠️ *Atenção, servo(a) de Deus!* ⚠️"
+                    "\n\n*Você precisa criar seu banco de repertório.*"
+                    "\n ⌨️ Digite ou 👆 clique no comando: /criarmeubancoderepertorio")
+    else:
+        response = (f"🔥 A paz do Senhor, *{name}*! 🔥"
+                    "\n\nPara adicionar um hino ao seu repertório, envie uma frase nesse formato:"
+                    "\n*adicionar: NOME DO LOUVOR,TOM*"
+                    "\n*Ex:* adicionar: Agnus Dei,F#")
+
+    bot.reply_to(message, response)
 
 @bot.message_handler(content_types=["new_chat_members"])
 def welcome_new_member(message):
@@ -110,25 +154,34 @@ def welcome_new_member(message):
 @bot.message_handler(func=lambda message: message.message_thread_id is not None)
 def watch_topics(message: Message):
     thread_id = message.message_thread_id
-    topic_name = title_topics.get(thread_id, "Tópico desconhecido")
+    topic_name = title_topics.get(thread_id)
     user = message.from_user.full_name
+
+    print(topic_name)
 
     message = (
         f"🔔 *Atualização no Tópico:* {topic_name}\n"
         f"👤 *Irmã(o):* {user}\n"
     )
 
-    bot.send_message(CHAT_ID, "🔥 TEERRRAAAA! 🔥 "
-                              f"\n\n {message}")
+    if topic_name is not None:
+        bot.send_message(CHAT_ID, "🔥 TEERRRAAAA! 🔥 "
+                                  f"\n\n {message}")
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    try:
-        user_first_name = str(message.from_user.first_name)
-        bot.reply_to(message, f"Paz, {user_first_name}! Você disse: {message.text}"
-                              f"{message_default}")
-    except Exception as e:
-        bot.reply_to(message, f"Ocorreu um erro: {e}")
+    user_id = message.from_user.id
+    user_name = str(message.from_user.first_name)
+    input_user = message.text
+
+    commands = {
+        "adicionar:": post_repertory,
+        "atualizar:": update_repertory
+    }
+
+    for cmd, callback in commands.items():
+        if cmd in input_user:
+            return callback(message, user_name, user_id, input_user)
 
 def automatic_message(custom_message = None):
     message = ("🔥 *Atenção, irmãos!* 🔥"
@@ -140,27 +193,113 @@ def automatic_message(custom_message = None):
 
 def cron_messages():
     schedule.every().monday.at("20:00").do(lambda: automatic_message("🎶 *Revisem as escalas, escolham os hinos e estejam prontos para o louvor!* 🎶"
-                                                             "\nPois *“tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor, e não aos homens.”* (Colossenses 3:23)"))
+                                                                     "\nPois *“tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor, e não aos homens.”* (Colossenses 3:23)"))
 
     schedule.every().wednesday.at("20:00").do(lambda: automatic_message("*“Tudo tem o seu tempo determinado, e há tempo para todo o propósito debaixo do céu.”* (Eclesiastes 3:1)"
-                                                                "\nO tempo chegou, e o *hino ainda não foi escolhido!* 🎶"
-                                                                "\n*Lembre-se:* o Senhor merece nossa dedicação e prontidão. Não deixe a oportunidade passar, pois o louvor abre os céus e prepara o coração! 🙌"
-                                                                "\n*Escolha logo o seu hino, pois o culto não pode parar e a adoração precisa subir como um incenso suave ao Senhor!* 🔥"))
+                                                                        "\nO tempo chegou, e o *hino ainda não foi escolhido!* 🎶"
+                                                                        "\n*Lembre-se:* o Senhor merece nossa dedicação e prontidão. Não deixe a oportunidade passar, pois o louvor abre os céus e prepara o coração! 🙌"
+                                                                        "\n*Escolha logo o seu hino, pois o culto não pode parar e a adoração precisa subir como um incenso suave ao Senhor!* 🔥"))
     schedule.every().friday.at("18:00").do(lambda: automatic_message("*“Procura apresentar-te a Deus aprovado, como obreiro que não tem de que se envergonhar, que maneja bem a palavra da verdade.”* (2 Timóteo 2:15)"
-                                                             "\nNão se esqueçam de estudar e se preparar com dedicação!"
-                                                             "\nSeja o louvor, a Palavra ou o instrumento, *façamos tudo com excelência para o Senhor*. 🎶🙌"
-                                                             "\nLembrem-se: *“O Espírito Santo unge o preparo, não a preguiça!”* 🔥"
-                                                             "\nVamos buscar mais, crescer mais e honrar a obra do Pai!"))
+                                                                     "\nNão se esqueçam de estudar e se preparar com dedicação!"
+                                                                     "\nSeja o louvor, a Palavra ou o instrumento, *façamos tudo com excelência para o Senhor*. 🎶🙌"
+                                                                     "\nLembrem-se: *“O Espírito Santo unge o preparo, não a preguiça!”* 🔥"
+                                                                     "\nVamos buscar mais, crescer mais e honrar a obra do Pai!"))
     schedule.every().saturday.at("17:00").do(lambda: automatic_message("Não esqueçam de se consagrar, pois a obra do Senhor exige santidade e compromisso!"
-                                                               "\n*“Santificai-vos, porque amanhã o Senhor fará maravilhas no meio de vós.”* (Josué 3:5)"
-                                                               "\nA consagração é a chave para que o poder de Deus se manifeste através de nós. Sem oração e santidade, o altar fica vazio e a unção não desce. 🙌"
-                                                               "\n*Preparem-se! O Senhor merece o nosso melhor: corpo, alma e espírito em consagração*"
-                                                               "\nVamos buscar, orar e jejuar, porque grande será a obra! 🔥"))
+                                                                       "\n*“Santificai-vos, porque amanhã o Senhor fará maravilhas no meio de vós.”* (Josué 3:5)"
+                                                                       "\nA consagração é a chave para que o poder de Deus se manifeste através de nós. Sem oração e santidade, o altar fica vazio e a unção não desce. 🙌"
+                                                                       "\n*Preparem-se! O Senhor merece o nosso melhor: corpo, alma e espírito em consagração*"
+                                                                       "\nVamos buscar, orar e jejuar, porque grande será a obra! 🔥"))
     # schedule.every().tuesday.at("13:14").do(lambda: automatic_message("13:14"))
 
     while True:
         schedule.run_pending()  # Check if there are any scheduled tasks
         time.sleep(1)
+
+def check_is_not_register(user_id):
+    tab = str(user_id)
+    sheet = client.open(SPREADSHEET_NAME)
+    get_all_tabs = [sheet.title for sheet in sheet.worksheets()]
+
+    return tab not in get_all_tabs
+
+def create_tab_user(tab_id):
+    tab = str(tab_id)
+    sheet = client.open(SPREADSHEET_NAME)
+
+    get_all_tabs = [sheet.title for sheet in sheet.worksheets()]
+
+    if tab in get_all_tabs:
+        return False
+    else:
+        worksheet = sheet.add_worksheet(title=tab, rows=100, cols=2)
+        worksheet.append_row(["NOME", "TOM"])
+        worksheet.freeze(rows=1)
+        format_first_register(worksheet)
+
+        print(f"Create tab '{tab}'!")
+        return True
+
+def post_repertory(message, user_name, user_id, input_user):
+    try:
+        sheet = client.open(SPREADSHEET_NAME).worksheet(str(user_id))
+        content = input_user.replace("adicionar: ", "")
+
+        if "," in content:
+            name, tone = content.split(",", 1)
+            name = name.strip()
+            tone = tone.strip()
+            sheet.append_row([name, tone])
+            response = ("🎶 *Glória a Deus, servo(a) do Senhor!* 🎶"
+                        f"\n\nMais um louvor foi adicionado ao seu repertório *{user_name}*, e o céu se alegra quando nos preparamos com zelo e dedicação para adorar ao Rei dos reis! 🙌"
+                        "\n*“Louvai ao Senhor, porque o Senhor é bom; cantai louvores ao Seu nome, porque é agradável.”* (Salmos 135:3)"
+                        "\nQue este louvor seja usado com unção, toque corações e eleve vidas à presença do Senhor. Lembre-se: o louvor quebra cadeias, traz cura e abre caminhos! 🔥"
+                        "\n\nContinue firme, pois *“Deus procura adoradores que O adorem em espírito e em verdade.”* (João 4:23)")
+
+        else:
+            response = (f"⚠️ Atenção, *{user_name}*! ⚠️"
+                        "\n*“O justo cai sete vezes, mas torna a levantar-se.”* (Provérbios 24:16)"
+                        "\n\n Você não seguiu o formato correto:"
+                        "\n*adicionar: NOME DO LOUVOR,TOM*")
+
+        bot.reply_to(message, response)
+
+    except gspread.exceptions.WorksheetNotFound:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Seu repertório não foi encontrada!"
+                              f"\n\n Acesse o /criarmeubancoderepertorio e tente novamente.")
+    except Exception:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Tente novamente.")
+
+def update_repertory(message, user_name, user_id, input_user):
+    try:
+        sheet = client.open(SPREADSHEET_NAME).worksheet(str(user_id))
+        content = input_user.replace("atualizar: ", "")
+        data = sheet.get_all_records()
+
+        if "," in content:
+            name, tone = content.split(",", 1)
+            name = name.strip()
+            tone = tone.strip()
+
+            for i, columns in enumerate(data, start=2):
+                if columns["NOME"] == name:
+                    sheet.update_cell(i, 2, tone)
+
+                    bot.reply_to(message, f"✅ TOM da música '{name}' atualizado para '{tone}'.")
+                    return
+
+            bot.reply_to(message, f"❌ Música '{name}' não encontrada no seu repertório! Tente novamente.")
+
+        else:
+            bot.reply_to(message, f"⚠️ Atenção, *{user_name}*! ⚠️"
+                                  "\n*“O justo cai sete vezes, mas torna a levantar-se.”* (Provérbios 24:16)"
+                                  "\n\n Você não seguiu o formato correto:"
+                                  "\n*atualizar: NOME DO LOUVOR,TOM*")
+
+    except gspread.exceptions.WorksheetNotFound:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Seu repertório não foi encontrada!"
+                              f"\n\n Acesse o /criarmeubancoderepertorio e tente novamente.")
+    except Exception:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Tente novamente.")
 
 def check_authenticated():
     try:

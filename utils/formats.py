@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from gspread_formatting import format_cell_range, CellFormat, TextFormat
+
 
 def format_scale(data_records):
     date_scale = next((item['DATA ESCALA'] for item in data_records if item['DATA ESCALA']), None)
@@ -56,3 +58,10 @@ def format_events(events):
         result.extend(details)
         result.append("\n")
     return "\n".join(result)
+
+def format_first_register(worksheet):
+    fmt = CellFormat(
+        textFormat=TextFormat(bold=True),
+        horizontalAlignment="CENTER"
+    )
+    format_cell_range(worksheet, "A1:B1", fmt)
