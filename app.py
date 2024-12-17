@@ -35,7 +35,12 @@ message_commands = ("\n\nSeu assistente pessoal para te ajudar com as escalas, e
                     "\n/minhamatricula para listar sua matrícula."
                     "\n/criarmeubancoderepertorio para criar sua lista de músicas/tons."
                     "\n/addrepertorio para adicionar um hino ao seu repertório."
+                    "\n/atualizarrepertorio para atualizar o tom de um hino no seu repertório."
+                    "\n/qualmeutom para saber o tom de um hino no seu repertório."
                     "\n\nEstou sempre afinado e pronto para ajudar! 🎸")
+message_create_repertory = ("⚠️ *Atenção, servo(a) de Deus!* ⚠️"
+                            "\n\n*Você precisa criar seu banco de repertório.*"
+                            "\n ⌨️ Digite ou 👆 clique no comando: /criarmeubancoderepertorio")
 title_topics = {
     3: "MULTITRACKS 🎶",
     4: "MP3 🎶",
@@ -129,14 +134,44 @@ def add_repertory(message):
     not_register = check_is_not_register(user_id)
 
     if not_register:
-        response = ("⚠️ *Atenção, servo(a) de Deus!* ⚠️"
-                    "\n\n*Você precisa criar seu banco de repertório.*"
-                    "\n ⌨️ Digite ou 👆 clique no comando: /criarmeubancoderepertorio")
+        response = message_create_repertory
     else:
         response = (f"🔥 A paz do Senhor, *{name}*! 🔥"
                     "\n\nPara adicionar um hino ao seu repertório, envie uma frase nesse formato:"
                     "\n*adicionar: NOME DO LOUVOR,TOM*"
                     "\n*Ex:* adicionar: Agnus Dei,F#")
+
+    bot.reply_to(message, response)
+
+@bot.message_handler(commands=['atualizarrepertorio'])
+def change_repertory(message):
+    user_id = message.from_user.id
+    name = message.from_user.first_name
+    not_register = check_is_not_register(user_id)
+
+    if not_register:
+        response = message_create_repertory
+    else:
+        response = (f"🔥 A paz do Senhor, *{name}*! 🔥"
+                    "\n\nPara atualizar o tom de um hino no seu repertório, envie uma frase nesse formato:"
+                    "\n*atualizar: NOME DO LOUVOR,NOVOTOM*"
+                    "\n*Ex:* atualizar: Agnus Dei,F#")
+
+    bot.reply_to(message, response)
+
+@bot.message_handler(commands=['qualmeutom'])
+def get_my_tone(message):
+    user_id = message.from_user.id
+    name = message.from_user.first_name
+    not_register = check_is_not_register(user_id)
+
+    if not_register:
+        response = message_create_repertory
+    else:
+        response = (f"🔥 A paz do Senhor, *{name}*! 🔥"
+                    "\n\nPara saber o tom de um hino no seu repertório, envie uma frase nesse formato:"
+                    "\n*qual o tom: NOME DO LOUVOR*"
+                    "\n*Ex:* qual o tom: Agnus Dei")
 
     bot.reply_to(message, response)
 
@@ -176,7 +211,8 @@ def echo_all(message):
 
     commands = {
         "adicionar:": post_repertory,
-        "atualizar:": update_repertory
+        "atualizar:": update_repertory,
+        "qual o tom:": get_repertory
     }
 
     for cmd, callback in commands.items():
@@ -231,7 +267,7 @@ def create_tab_user(tab_id):
     if tab in get_all_tabs:
         return False
     else:
-        worksheet = sheet.add_worksheet(title=tab, rows=100, cols=2)
+        worksheet = sheet.add_worksheet(title=tab, rows=500, cols=2)
         worksheet.append_row(["NOME", "TOM"])
         worksheet.freeze(rows=1)
         format_first_register(worksheet)
@@ -268,7 +304,42 @@ def post_repertory(message, user_name, user_id, input_user):
                               f"\n\n Acesse o /criarmeubancoderepertorio e tente novamente.")
     except Exception:
         bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Tente novamente.")
+def get_repertory(message, user_name, user_id, input_user):
+    try:
+        sheet = client.open(SPREADSHEET_NAME).worksheet(str(user_id))
+        search = input_user.replace("qual o tom: ", "")
+        data = sheet.get_all_records()
 
+        if search:
+            result = [
+                (column["NOME"], column["TOM"])
+                for column in data
+                if "NOME" in column and "TOM" in column
+                   and search.lower() in column["NOME"].lower()
+            ]
+
+            if result:
+                response = "*Louvores encontrados* no seu repertório:\n"
+                response += "\n".join([f"{i}. {name_music} - *{tone}*" for i, (name_music, tone) in enumerate(result[:5], start=1)])
+
+            else:
+                response = "❌ Nenhuma música encontrada no seu repertório."
+
+            bot.reply_to(message, f"🔥 A paz do Senhor, *{user_name}*! 🔥"
+                                  f"\n\n{response}")
+
+        else:
+            bot.reply_to(message, f"⚠️ Atenção, *{user_name}*! ⚠️"
+                                  "\n*“O justo cai sete vezes, mas torna a levantar-se.”* (Provérbios 24:16)"
+                                  "\n*qual o tom: NOME DO LOUVOR*"
+                                  "\n*Ex:* qual o tom: Agnus Dei")
+
+    except gspread.exceptions.WorksheetNotFound:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Seu repertório não foi encontrada!"
+                              f"\n\n Acesse o /criarmeubancoderepertorio e tente novamente.")
+    except Exception as error:
+        bot.reply_to(message, f"❌ Oh irmã(o) {user_name}! Tente novamente."
+                     f"\n\n{error}")
 def update_repertory(message, user_name, user_id, input_user):
     try:
         sheet = client.open(SPREADSHEET_NAME).worksheet(str(user_id))
