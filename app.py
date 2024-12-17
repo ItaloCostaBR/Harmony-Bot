@@ -1,6 +1,9 @@
 import os
+import threading
+import time
 
 import gspread
+import schedule
 import telebot
 from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
@@ -127,6 +130,38 @@ def echo_all(message):
     except Exception as e:
         bot.reply_to(message, f"Ocorreu um erro: {e}")
 
+def automatic_message(custom_message = None):
+    message = ("🔥 *Atenção, irmãos!* 🔥"
+               "\n\n“Desperta, ó tu que dormes!” (*Efésios 5:14*)"
+               "\nVamos ficar *atentos* e firmes, porque a obra do Senhor requer *compromisso* e *excelência*! 🙌"
+               f"\n\n{custom_message}"
+               "\n\nQuem está junto, diga GLÓRIA! ✨🔥")
+    bot.send_message(CHAT_ID, message)
+
+def cron_messages():
+    schedule.every().monday.at("20:00").do(lambda: automatic_message("🎶 *Revisem as escalas, escolham os hinos e estejam prontos para o louvor!* 🎶"
+                                                             "\nPois *“tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor, e não aos homens.”* (Colossenses 3:23)"))
+
+    schedule.every().wednesday.at("20:00").do(lambda: automatic_message("*“Tudo tem o seu tempo determinado, e há tempo para todo o propósito debaixo do céu.”* (Eclesiastes 3:1)"
+                                                                "\nO tempo chegou, e o *hino ainda não foi escolhido!* 🎶"
+                                                                "\n*Lembre-se:* o Senhor merece nossa dedicação e prontidão. Não deixe a oportunidade passar, pois o louvor abre os céus e prepara o coração! 🙌"
+                                                                "\n*Escolha logo o seu hino, pois o culto não pode parar e a adoração precisa subir como um incenso suave ao Senhor!* 🔥"))
+    schedule.every().friday.at("18:00").do(lambda: automatic_message("*“Procura apresentar-te a Deus aprovado, como obreiro que não tem de que se envergonhar, que maneja bem a palavra da verdade.”* (2 Timóteo 2:15)"
+                                                             "\nNão se esqueçam de estudar e se preparar com dedicação!"
+                                                             "\nSeja o louvor, a Palavra ou o instrumento, *façamos tudo com excelência para o Senhor*. 🎶🙌"
+                                                             "\nLembrem-se: *“O Espírito Santo unge o preparo, não a preguiça!”* 🔥"
+                                                             "\nVamos buscar mais, crescer mais e honrar a obra do Pai!"))
+    schedule.every().saturday.at("17:00").do(lambda: automatic_message("Não esqueçam de se consagrar, pois a obra do Senhor exige santidade e compromisso!"
+                                                               "\n*“Santificai-vos, porque amanhã o Senhor fará maravilhas no meio de vós.”* (Josué 3:5)"
+                                                               "\nA consagração é a chave para que o poder de Deus se manifeste através de nós. Sem oração e santidade, o altar fica vazio e a unção não desce. 🙌"
+                                                               "\n*Preparem-se! O Senhor merece o nosso melhor: corpo, alma e espírito em consagração*"
+                                                               "\nVamos buscar, orar e jejuar, porque grande será a obra! 🔥"))
+    # schedule.every().tuesday.at("13:14").do(lambda: automatic_message("13:14"))
+
+    while True:
+        schedule.run_pending()  # Check if there are any scheduled tasks
+        time.sleep(1)
+
 def check_authenticated():
     try:
         credentials = ServiceAccountCredentials.from_json_keyfile_name(SHEET_CREDENTIALS_FILE, scope)
@@ -139,6 +174,8 @@ def main():
     os.system('clear')
     # check_authenticated()
     print("HarmonyBot running...")
+    schedule_threads = threading.Thread(target=cron_messages)
+    schedule_threads.start()
     bot.polling()
 
 if __name__ == '__main__':
