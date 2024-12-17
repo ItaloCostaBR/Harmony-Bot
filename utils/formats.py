@@ -1,3 +1,6 @@
+from collections import defaultdict
+
+
 def format_scale(data_records):
     date_scale = next((item['DATA ESCALA'] for item in data_records if item['DATA ESCALA']), None)
     scale = [
@@ -15,11 +18,11 @@ def format_scale(data_records):
 
 def format_message_scale(obj):
     list_scale = "\n".join(
-        f"{i+1}.⁠ ⁠{item['name']} ({item['function']})"
+        f"{i+1}. {item['name']} ({item['function']})"
         for i, item in enumerate(obj['scale'])
     )
 
-    return f"{obj['date_scale']} \n{list_scale}"
+    return f"*{obj['date_scale']}* \n{list_scale}"
 
 def update_rotation_scale(data_records):
     data_records.insert(0, data_records.pop())
@@ -41,3 +44,15 @@ def update_rotation_scale(data_records):
                 data['FUNÇÃO'] += ' e harpa'
 
     return data_records
+
+def format_events(events):
+    events_by_date = defaultdict(list)
+    for event in events:
+        events_by_date[event['Data']].append(f"- *Evento:* {event['Evento']}\n   *Departamento:* {event['Departamento']}")
+
+    result = []
+    for data, details in events_by_date.items():
+        result.append(f"-> *{data}*")
+        result.extend(details)
+        result.append("\n")
+    return "\n".join(result)
