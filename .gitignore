@@ -178,6 +178,4 @@ pyrightconfig.json
 .idea
 .vscode
 outputs
-
-.env
 credentials.json
