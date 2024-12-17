@@ -4,6 +4,7 @@ import gspread
 import telebot
 from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
+from telebot.types import Message
 
 from utils.formats import format_scale, format_message_scale, update_rotation_scale, format_events
 from utils.validates import is_past_date, next_sunday
@@ -28,6 +29,13 @@ message_default = ("\n\nSeu assistente pessoal para te ajudar com as escalas, ev
                    "\n/eventos para visualizar os eventos especiais do mês."
                    "\n/repertorio para acessar a playlist de domingo."
                    "\n\nEstou sempre afinado e pronto para ajudar! 🎸")
+title_topics = {
+    3: "MULTITRACKS 🎶",
+    4: "MP3 🎶",
+    5: "FOTOS 📷",
+    9: "ESTUDOS 📚",
+    116: "Continuos Pad 🎶",
+}
 
 def get_all_content_sheet(idx_tab = 0):
     try:
@@ -96,6 +104,20 @@ def welcome_new_member(message):
                                           "\nO *HarmonyBot* está aqui para organizar *escalas*, *eventos* e *repertórios*, para que tudo seja feito com *harmonia e excelência*!"
                                           "\n\nDeus te abençoe grandemente! 🙌")
 
+@bot.message_handler(func=lambda message: message.message_thread_id is not None)
+def watch_topics(message: Message):
+    thread_id = message.message_thread_id
+    topic_name = title_topics.get(thread_id, "Tópico desconhecido")
+    user = message.from_user.full_name
+
+    message = (
+        f"🔔 *Atualização no Tópico:* {topic_name}\n"
+        f"👤 *Irmã(o):* {user}\n"
+    )
+
+    bot.send_message(CHAT_ID, "🔥 TEERRRAAAA! 🔥 "
+                              f"\n\n {message}")
+
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
     try:
@@ -116,8 +138,7 @@ def check_authenticated():
 def main():
     os.system('clear')
     # check_authenticated()
-    # Inicia o bot
-    print("Bot em execução...")
+    print("HarmonyBot running...")
     bot.polling()
 
 if __name__ == '__main__':
