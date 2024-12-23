@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
 from telebot.types import Message
 
-from utils.formats import format_scale, format_message_scale, update_rotation_scale, format_events, \
-    format_first_register
+from utils.formats import format_scale, format_message_scale, format_events, \
+    format_first_register, normalize_string
 from utils.validates import is_past_date, next_sunday
 
 load_dotenv()
@@ -59,16 +59,26 @@ def get_all_content_sheet(idx_tab = 0):
 def update_scale():
     try:
         data_sheet = client.open(SPREADSHEET_NAME).get_worksheet(2)
-        sheet = get_all_content_sheet(2)
-        rotation = update_rotation_scale(sheet)
+        sheet = data_sheet.get_all_records()
 
-        for data in rotation:
-            data['DATA ESCALA'] = ''
+        first = sheet.pop(0)
+        sheet.append(first)
 
-        rotation[0]['DATA ESCALA'] = next_sunday().strftime("%d/%m/%Y")
-        data_updated = [[data['ORDEM'], data['FUNÇÃO'], data['DATA ESCALA']] for data in rotation]
+        for i, data in enumerate(sheet):
 
-        data_sheet.update(values=data_updated, range_name="A2:C6")
+            if i == 0:
+                data['FUNÇÃO'] = 'abertura'
+            elif i in (1, 2):
+                data['FUNÇÃO'] = 'congregacional'
+            elif i == 3:
+                data['FUNÇÃO'] = 'harpa'
+            elif i == 4:
+                data['FUNÇÃO'] = 'oferta'
+
+            data['DATA ESCALA'] = next_sunday().strftime('%d/%m/%Y') if i == 0 else None
+
+
+        data_sheet.update([list(data.values()) for data in sheet], 'A2')
 
         return True
 

@@ -1,3 +1,4 @@
+import unicodedata
 from collections import defaultdict
 
 from gspread_formatting import format_cell_range, CellFormat, TextFormat
@@ -26,31 +27,10 @@ def format_message_scale(obj):
 
     return f"*{obj['date_scale']}* \n{list_scale}"
 
-def update_rotation_scale(data_records):
-    data_records.insert(0, data_records.pop())
-
-    for i, data in enumerate(data_records):
-        if i == 0:
-            # data['FUNÇÃO'] = 'abertura'
-            continue
-        elif i == 1 or i == 2:
-            data['FUNÇÃO'] = 'congregacional'
-        elif i == 3:
-            data['FUNÇÃO'] = 'harpa'
-        elif i == 4:
-            data['FUNÇÃO'] = 'oferta'
-
-        if data['ORDEM'].strip() == 'Letícia':
-            data['FUNÇÃO'] = 'abertura'
-            if i == 3:
-                data['FUNÇÃO'] += ' e harpa'
-
-    return data_records
-
 def format_events(events):
     events_by_date = defaultdict(list)
     for event in events:
-        events_by_date[event['Data']].append(f"- *Evento:* {event['Evento']}\n   *Departamento:* {event['Departamento']}")
+        events_by_date[event['Data']].append(f"- *Evento:* {event['Evento']} {'\n *Departamento:*' if event['Departamento'] else ''}")
 
     result = []
     for data, details in events_by_date.items():
@@ -65,3 +45,14 @@ def format_first_register(worksheet):
         horizontalAlignment="CENTER"
     )
     format_cell_range(worksheet, "A1:B1", fmt)
+
+def normalize_string(value):
+    """
+    Normaliza uma string, removendo acentos e espaços extras.
+    :param value: String para normalizar.
+    :return: String normalizada, em minúsculas.
+    """
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', value)
+        if unicodedata.category(c) != 'Mn'
+    ).lower().strip()
