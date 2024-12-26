@@ -30,7 +30,8 @@ def format_message_scale(obj):
 def format_events(events):
     events_by_date = defaultdict(list)
     for event in events:
-        events_by_date[event['Data']].append(f"- *Evento:* {event['Evento']} {f'\n *Departamento:* {event['Departamento']}' if event['Departamento'] else ''}")
+        events_by_date[event['Data']].append(f"- *Evento:* {event['Evento']}" +
+                                             (f"\n *Departamento:* {event['Departamento']}" if event['Departamento'] else ""))
 
     result = []
     for data, details in events_by_date.items():
