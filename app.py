@@ -6,6 +6,7 @@ import gspread
 import schedule
 import telebot
 from dotenv import load_dotenv
+from flask import Flask, render_template
 from oauth2client.service_account import ServiceAccountCredentials
 from telebot.types import Message
 
@@ -390,10 +391,21 @@ def check_authenticated():
     except Exception as e:
         print(f"Erro ao autenticar: {e}")
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return render_template("home.html")
+
+def run_server():
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
 def main():
     os.system('clear')
     # check_authenticated()
     print("HarmonyBot running...")
+    threading.Thread(target=run_server).start()
     schedule_threads = threading.Thread(target=cron_messages)
     schedule_threads.start()
     bot.polling()
